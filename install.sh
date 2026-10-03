@@ -16,7 +16,7 @@ case "$os/$arch" in
   *)
     echo "No prebuilt fairpage binary for $os/$arch." >&2
     echo "Supported: Linux/x86_64, Linux/arm64, Darwin/arm64, Darwin/x86_64." >&2
-    echo "Windows: download fairpage-windows-x86_64.exe from https://github.com/$REPO/releases" >&2
+    echo "Windows: run install.ps1 in PowerShell, as https://github.com/$REPO says." >&2
     exit 1 ;;
 esac
 

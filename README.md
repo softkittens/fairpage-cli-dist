@@ -5,13 +5,21 @@ clone a site's draft into a folder, preview it with local changes, push them,
 publish.
 
 The source repo stays private. This repo contains **releases only**: prebuilt
-binaries with checksums and their signatures, `install.sh`,
+binaries with checksums and their signatures, `install.sh`, `install.ps1`,
 `release-signing.pub`, `README.md`, `LICENSE`. No source.
 
 ## Install
 
+macOS and Linux:
+
 ```sh
 curl -fsSL https://raw.githubusercontent.com/softkittens/fairpage-cli-dist/main/install.sh | sh
+```
+
+Windows, in PowerShell or a command prompt:
+
+```powershell
+powershell -c "irm https://raw.githubusercontent.com/softkittens/fairpage-cli-dist/main/install.ps1 | iex"
 ```
 
 Supported platforms:
@@ -20,9 +28,9 @@ Supported platforms:
 - `Linux/aarch64` → `fairpage-linux-arm64`
 - `Darwin/arm64` (Apple Silicon) → `fairpage-darwin-arm64`
 - `Darwin/x86_64` (Intel) → `fairpage-darwin-x86_64`
-- Windows x86_64: download `fairpage-windows-x86_64.exe` from
-  [Releases](https://github.com/softkittens/fairpage-cli-dist/releases) and
-  put it on your `PATH` as `fairpage.exe`.
+- Windows x86_64 → `fairpage-windows-x86_64.exe`, installed as `fairpage.exe`
+  in `%LOCALAPPDATA%\Programs\fairpage`, which is added to your user `PATH`.
+  Windows on ARM runs it under emulation.
 
 Pin a version (also the rollback path):
 
@@ -30,14 +38,27 @@ Pin a version (also the rollback path):
 FAIRPAGE_VERSION=v0.1.0 sh install.sh
 ```
 
+```powershell
+$env:FAIRPAGE_VERSION = "v0.1.0"; irm https://raw.githubusercontent.com/softkittens/fairpage-cli-dist/main/install.ps1 | iex
+```
+
 Choose install location (default: `/usr/local/bin` if writable, else
-`~/.local/bin`):
+`~/.local/bin`; on Windows `%LOCALAPPDATA%\Programs\fairpage`):
 
 ```sh
 FAIRPAGE_PREFIX="$HOME/.local/bin" sh install.sh
 ```
 
-Every download is verified against its `.sha256` before install.
+```powershell
+$env:FAIRPAGE_PREFIX = "C:\tools\fairpage"; irm https://raw.githubusercontent.com/softkittens/fairpage-cli-dist/main/install.ps1 | iex
+```
+
+Every download is verified against its `.sha256` before install, and the new
+binary has to run before it replaces an installed one.
+
+In WSL, use `install.sh` and keep the site in the Linux file system
+(`~/...`, not `/mnt/c/...`): changes made by Windows programs to files under
+`/mnt/c` reach Linux without file events, so `fairpage dev` would not reload.
 
 ## Verify a signature
 
