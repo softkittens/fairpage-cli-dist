@@ -56,6 +56,19 @@ $env:FAIRPAGE_PREFIX = "C:\tools\fairpage"; irm https://raw.githubusercontent.co
 Every download is verified against its `.sha256` before install, and the new
 binary has to run before it replaces an installed one.
 
+## Update
+
+```sh
+fairpage update
+```
+
+installs the latest release, only when the signature on its `.sha256`
+verifies with the public key compiled into `fairpage`, the download matches
+the checksum, and the new binary runs. To pin or roll back, run `install.sh`
+or `install.ps1` with `FAIRPAGE_VERSION`. `fairpage dev` says when a newer
+release is out, checking at most once a day; `FAIRPAGE_NO_UPDATE_CHECK=1`
+turns that off.
+
 In WSL, use `install.sh` and keep the site in the Linux file system
 (`~/...`, not `/mnt/c/...`): changes made by Windows programs to files under
 `/mnt/c` reach Linux without file events, so `fairpage dev` would not reload.
