@@ -9,10 +9,10 @@ REPO="softkittens/fairpage-cli-dist"
 
 os=$(uname -s); arch=$(uname -m)
 case "$os/$arch" in
-  Linux/x86_64)                asset="fairpage-linux-x86_64" ;;
-  Linux/aarch64 | Linux/arm64) asset="fairpage-linux-arm64" ;;
-  Darwin/arm64)                asset="fairpage-darwin-arm64" ;;
-  Darwin/x86_64)               asset="fairpage-darwin-x86_64" ;;
+  Linux/x86_64)                asset="fairpage-linux-x86_64";  platform="Linux (x86_64)" ;;
+  Linux/aarch64 | Linux/arm64) asset="fairpage-linux-arm64";   platform="Linux (arm64)" ;;
+  Darwin/arm64)                asset="fairpage-darwin-arm64";  platform="macOS (Apple Silicon)" ;;
+  Darwin/x86_64)               asset="fairpage-darwin-x86_64"; platform="macOS (Intel)" ;;
   *)
     echo "No prebuilt fairpage binary for $os/$arch." >&2
     echo "Supported: Linux/x86_64, Linux/arm64, Darwin/arm64, Darwin/x86_64." >&2
@@ -41,7 +41,13 @@ trap 'rm -rf "$tmp"' EXIT
 trap 'exit 130' INT
 trap 'exit 143' TERM
 
-echo "Downloading $asset..."
+if [ -t 1 ] && [ -z "${NO_COLOR:-}" ]; then
+  bold=$(printf '\033[1m'); reset=$(printf '\033[0m')
+else
+  bold=""; reset=""
+fi
+
+echo "Downloading the fairpage CLI${FAIRPAGE_VERSION:+ $FAIRPAGE_VERSION} for $platform..."
 curl -fsSL -S "$base/$asset"        -o "$tmp/fairpage"
 curl -fsSL -S "$base/$asset.sha256" -o "$tmp/sum"
 
@@ -67,11 +73,40 @@ if [ "$os" = "Darwin" ]; then
 fi
 
 # Verify the new binary runs before replacing any existing installation.
-installed_version=$("$tmp/fairpage" --version)
+# --version prints "fairpage version v0.1.0".
+new=$("$tmp/fairpage" --version); new=${new##* }
+old=""
+if [ -x "$prefix/fairpage" ]; then
+  old=$("$prefix/fairpage" --version 2>/dev/null || true); old=${old##* }
+fi
 mv "$tmp/fairpage" "$prefix/fairpage"
 
-echo "Installed: $installed_version"
+if [ -n "$old" ] && [ "$old" != "$new" ]; then
+  echo "Updated fairpage from $old to $new in $prefix/fairpage"
+elif [ -n "$old" ]; then
+  echo "Reinstalled fairpage $new in $prefix/fairpage"
+else
+  echo "Installed fairpage $new to $prefix/fairpage"
+fi
+
 case ":$PATH:" in
   *":$prefix:"*) ;;
-  *) printf '\n%s is not on your PATH. Add it:\n  export PATH="%s:$PATH"\n' "$prefix" "$prefix" ;;
+  *)
+    line="export PATH=\"$prefix:\$PATH\""
+    case "${SHELL##*/}" in
+      fish) add="fish_add_path $prefix" ;;
+      zsh)  add="echo '$line' >> ~/.zshrc" ;;
+      bash) if [ "$os" = Darwin ]; then add="echo '$line' >> ~/.bash_profile"; else add="echo '$line' >> ~/.bashrc"; fi ;;
+      *)    add="echo '$line' >> ~/.profile" ;;
+    esac
+    printf '\n%s is not on your PATH. Add it, then open a new terminal:\n  %s\n' "$prefix" "$add" ;;
 esac
+
+# A first install says what to run next; an update says only what changed.
+if [ -z "$old" ]; then
+  printf '\nGet started:\n'
+  printf '  %sfairpage login%s   log in to your Fairpage account\n' "$bold" "$reset"
+  printf '  %sfairpage clone%s   download one of your sites into a folder\n' "$bold" "$reset"
+  printf '  %sfairpage dev%s     preview it as you edit, then %sfairpage push%s\n' "$bold" "$reset" "$bold" "$reset"
+  printf '\nEvery command: fairpage --help. Guide: https://fairpage.co/developers\n'
+fi

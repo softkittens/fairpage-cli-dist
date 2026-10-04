@@ -51,7 +51,8 @@
   try {
     $exe = Join-Path $tmp 'fairpage.exe'
     $sum = Join-Path $tmp 'sum'
-    Write-Host "Downloading $asset..."
+    $pinned = if ($version) { " $version" } else { '' }
+    Write-Host "Downloading the fairpage CLI$pinned for Windows (x86_64)..."
     Invoke-WebRequest -UseBasicParsing -Uri "$base/$asset" -OutFile $exe
     Invoke-WebRequest -UseBasicParsing -Uri "$base/$asset.sha256" -OutFile $sum
 
@@ -62,12 +63,18 @@
 
     Unblock-File $exe
     # Verify the new binary runs before replacing any existing installation.
-    $installed = & $exe --version
+    # --version prints "fairpage version v0.1.0".
+    $new = & $exe --version
     if ($LASTEXITCODE -ne 0) { throw 'The downloaded fairpage.exe did not run.' }
+    $new = ($new -split ' ')[-1]
 
     # Windows refuses to overwrite a running .exe but lets it be renamed: the
     # old one moves aside, and is deleted now or by the next install.
     $target = Join-Path $prefix 'fairpage.exe'
+    $previous = ''
+    if (Test-Path $target) {
+      try { $previous = ((& $target --version) -split ' ')[-1] } catch { }
+    }
     $old = "$target.old"
     Remove-Item -Force -ErrorAction SilentlyContinue $old
     if (Test-Path $target) { Move-Item -Force $target $old }
@@ -81,7 +88,13 @@
   } finally {
     Remove-Item -Recurse -Force -ErrorAction SilentlyContinue $tmp
   }
-  Write-Host "Installed: $installed"
+  if ($previous -and $previous -ne $new) {
+    Write-Host "Updated fairpage from $previous to $new in $target"
+  } elseif ($previous) {
+    Write-Host "Reinstalled fairpage $new in $target"
+  } else {
+    Write-Host "Installed fairpage $new to $target"
+  }
 
   # The user's PATH is read from the registry unexpanded and written back as
   # an expandable string: through [Environment] the entries written as
@@ -97,4 +110,15 @@
     Write-Host "Added $prefix to your PATH. Open a new terminal to run fairpage."
   }
   if (@($env:Path -split ';') -notcontains $prefix) { $env:Path = "$env:Path;$prefix" }
+
+  # A first install says what to run next; an update says only what changed.
+  if (-not $previous) {
+    Write-Host ''
+    Write-Host 'Get started:'
+    Write-Host '  fairpage login   log in to your Fairpage account'
+    Write-Host '  fairpage clone   download one of your sites into a folder'
+    Write-Host '  fairpage dev     preview it as you edit, then fairpage push'
+    Write-Host ''
+    Write-Host 'Every command: fairpage --help. Guide: https://fairpage.co/developers'
+  }
 }
